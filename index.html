@@ -615,7 +615,7 @@
       const weakIds = getStoredWeakIds();
       const weakBtn = document.getElementById("weak-course-btn");
       if (weakIds.length > 0) {
-        weakBtn.innerText = `まだ覚えていない問題 (${weakIds.length}问)`;
+        weakBtn.innerText = `まだ覚えていない問題 (${weakIds.length}問)`;
         weakBtn.style.display = "block";
       } else {
         weakBtn.style.display = "none";
@@ -666,7 +666,7 @@
     }
 
     function clearHistory() {
-      if (confirm("過去の履歴・記憶状態・出題回数データをすべて初期化しますか？")) {
+      if (confirm("過去の履歴・記憶状態・出題記録を初期化しますか？")) {
         localStorage.removeItem("ichimon_history");
         localStorage.removeItem("ichimon_weak_ids");
         localStorage.removeItem("ichimon_counts");
