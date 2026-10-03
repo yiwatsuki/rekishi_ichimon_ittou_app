@@ -316,7 +316,7 @@
     <div id="history-screen" class="screen">
       <h2>学習履歴</h2>
       <ul class="history-list" id="history-list"></ul>
-      <button class="sub-btn" onclick="clearHistory()" style="width:100%; margin-bottom:12px; color:#c5221f;">履歴と記憶データを初期化</button>
+      <button class="sub-btn" onclick="clearHistory()" style="width:100%; margin-bottom:12px; color:#c5221f;">履歴・記憶・出題記録を初期化</button>
       <button class="menu-btn" style="width:100%;" onclick="showStartScreen()">メニューに戻る</button>
     </div>
   </div>
@@ -360,7 +360,6 @@
       return result;
     }
 
-    // 画像の7列構成 (era_code, era_name, year, question, answer, explanation, source) に対応
     function parseCSV(text) {
       const lines = text.trim().split(/\r?\n/);
       const result = [];
@@ -372,14 +371,14 @@
         
         if (cols.length >= 6) {
           result.push({
-            id: `q_${i}`,                             // 行番号から一意のIDを生成
-            eraCode: parseInt(cols[0], 10) || 0,       // A列: era_code
-            eraName: cols[1] || "",                    // B列: era_name
-            year: cols[2] || "",                       // C列: year
-            question: cols[3] || "",                   // D列: question
-            answer: cols[4] || "",                     // E列: answer
-            explanation: cols[5] || "",                // F列: explanation
-            source: cols[6] || ""                      // G列: source
+            id: `q_${i}`,
+            eraCode: parseInt(cols[0], 10) || 0,
+            eraName: cols[1] || "",
+            year: cols[2] || "",
+            question: cols[3] || "",
+            answer: cols[4] || "",
+            explanation: cols[5] || "",
+            source: cols[6] || ""
           });
         }
       }
@@ -415,18 +414,61 @@
       showScreen("start-screen");
     }
 
+    // --- 出題回数管理用関数 ---
+    function getStoredCounts() {
+      const data = localStorage.getItem("ichimon_counts");
+      return data ? JSON.parse(data) : {};
+    }
+
+    function incrementQuestionCounts(questions) {
+      const counts = getStoredCounts();
+      questions.forEach(q => {
+        counts[q.id] = (counts[q.id] || 0) + 1;
+      });
+      localStorage.setItem("ichimon_counts", JSON.stringify(counts));
+    }
+
+    // 出題選択ロジック（出題回数が少ない問題を優先的に抽出）
+    function selectQuestionsLeastServed(dataArray, count) {
+      if (count === 'all' || count >= dataArray.length) {
+        return [...dataArray];
+      }
+
+      const counts = getStoredCounts();
+
+      // 各問題に出題回数を紐付け
+      const items = dataArray.map(item => ({
+        data: item,
+        count: counts[item.id] || 0,
+        rand: Math.random() // 同カウント時のランダムソート用
+      }));
+
+      // 出題回数昇順（少ない順） -> ランダム の優先順でソート
+      items.sort((a, b) => {
+        if (a.count !== b.count) {
+          return a.count - b.count;
+        }
+        return a.rand - b.rand;
+      });
+
+      return items.slice(0, count).map(item => item.data);
+    }
+
     function startQuiz(count) {
-      const shuffledAll = shuffleArray(allQuizData);
       let selected = [];
 
-      if (count === 'all' || count >= shuffledAll.length) {
-        selected = shuffledAll;
+      if (count === 'all') {
+        selected = [...allQuizData];
         currentCourseName = "全問コース";
       } else {
-        selected = shuffledAll.slice(0, count);
+        selected = selectQuestionsLeastServed(allQuizData, count);
         currentCourseName = `${count}問コース`;
       }
 
+      // 出題決定した問題の出題回数をカウントアップ
+      incrementQuestionCounts(selected);
+
+      // era_code 昇順（時代順）にソートしてセット
       currentQuizSet = selected.sort((a, b) => a.eraCode - b.eraCode);
       currentQuestionIndex = 0;
       rememberedCount = 0;
@@ -496,7 +538,6 @@
         sourceText.style.display = "none";
       }
 
-      // UI表示のリセット
       document.getElementById("show-answer-btn").style.display = "block";
       document.getElementById("answer-container").style.display = "none";
       document.getElementById("judge-btn-container").style.display = "none";
@@ -513,10 +554,10 @@
 
       if (isRemembered) {
         rememberedCount++;
-        removeWeakId(currentQuiz.id); // 覚えたらリストから削除
+        removeWeakId(currentQuiz.id);
       } else {
         currentRoundWrongQuestions.push(currentQuiz);
-        addWeakId(currentQuiz.id); // 「まだ」の場合は弱点リストに追加
+        addWeakId(currentQuiz.id);
       }
 
       currentQuestionIndex++;
@@ -574,7 +615,7 @@
       const weakIds = getStoredWeakIds();
       const weakBtn = document.getElementById("weak-course-btn");
       if (weakIds.length > 0) {
-        weakBtn.innerText = `まだ覚えていない問題 (${weakIds.length}問)`;
+        weakBtn.innerText = `まだ覚えていない問題 (${weakIds.length}问)`;
         weakBtn.style.display = "block";
       } else {
         weakBtn.style.display = "none";
@@ -625,9 +666,10 @@
     }
 
     function clearHistory() {
-      if (confirm("過去の履歴と記憶データをすべて初期化しますか？")) {
+      if (confirm("過去の履歴・記憶状態・出題回数データをすべて初期化しますか？")) {
         localStorage.removeItem("ichimon_history");
         localStorage.removeItem("ichimon_weak_ids");
+        localStorage.removeItem("ichimon_counts");
         showHistoryScreen();
       }
     }
