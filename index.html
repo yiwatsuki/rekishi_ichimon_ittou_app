@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>日本史 一問一答</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #f5f5f7;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .quiz-card {
+      background: #ffffff;
+      width: 100%;
+      max-width: 500px;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .screen {
+      display: none;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 1.3rem;
+      color: #333;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .menu-btn-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .menu-btn {
+      padding: 16px;
+      font-size: 1.05rem;
+      font-weight: bold;
+      background-color: #0071e3;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .menu-btn:hover {
+      background-color: #005bb5;
+    }
+
+    .weak-btn {
+      padding: 16px;
+      font-size: 1.05rem;
+      font-weight: bold;
+      background-color: #ff9500;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .weak-btn:hover {
+      background-color: #e08300;
+    }
+
+    .sub-btn {
+      padding: 12px;
+      font-size: 0.95rem;
+      background-color: #e8ecef;
+      color: #495057;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .sub-btn:hover {
+      background-color: #ced4da;
+    }
+
+    .quiz-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 12px;
+    }
+
+    .badge-container {
+      display: flex;
+      gap: 6px;
+    }
+
+    .era-badge {
+      background-color: #e8ecef;
+      color: #495057;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
+
+    .year-badge {
+      background-color: #e3f2fd;
+      color: #1976d2;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
+
+    .question-text {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    .show-answer-btn {
+      padding: 16px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      background-color: #34c759;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 100%;
+      transition: background-color 0.2s;
+    }
+
+    .show-answer-btn:hover {
+      background-color: #28a745;
+    }
+
+    .answer-container {
+      display: none;
+      margin-top: 16px;
+      padding: 16px;
+      background-color: #f8f9fa;
+      border: 2px solid #0071e3;
+      border-radius: 8px;
+    }
+
+    .answer-title {
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .answer-text {
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: #0071e3;
+      margin-bottom: 12px;
+    }
+
+    .explanation-text {
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: #333;
+      border-top: 1px dashed #ccc;
+      padding-top: 8px;
+    }
+
+    .source-text {
+      font-size: 0.8rem;
+      color: #888;
+      margin-top: 8px;
+      text-align: right;
+    }
+
+    .judge-btn-container {
+      display: none;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .judge-btn {
+      flex: 1;
+      padding: 14px;
+      font-size: 1rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      color: white;
+    }
+
+    .btn-remembered {
+      background-color: #34a853;
+    }
+
+    .btn-remembered:hover {
+      background-color: #2d9247;
+    }
+
+    .btn-not-yet {
+      background-color: #ea4335;
+    }
+
+    .btn-not-yet:hover {
+      background-color: #d33828;
+    }
+
+    .score-box {
+      text-align: center;
+      padding: 20px 0;
+    }
+
+    .score-number {
+      font-size: 2.2rem;
+      font-weight: bold;
+      color: #0071e3;
+      margin: 10px 0;
+    }
+
+    .rate-number {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .history-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 20px 0;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .history-item {
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="quiz-card">
+    <!-- 1. スタート画面 -->
+    <div id="start-screen" class="screen active">
+      <h2>日本史 一問一答</h2>
+      <p style="text-align: center; color: #666; margin-bottom: 24px;" id="loading-status">問題を読み込んでいます...</p>
+      
+      <div id="start-menu" class="menu-btn-container" style="display: none;">
+        <button class="menu-btn" onclick="startQuiz(10)">10問挑戦コース</button>
+        <button class="menu-btn" onclick="startQuiz(20)">20問挑戦コース</button>
+        <button class="menu-btn" onclick="startQuiz('all')">全問挑戦コース</button>
+        <button class="weak-btn" id="weak-course-btn" onclick="startWeakQuiz()" style="display: none;">まだ覚えていない問題 (0問)</button>
+        <button class="sub-btn" onclick="showHistoryScreen()">学習ログを見る</button>
+      </div>
+    </div>
+
+    <!-- 2. クイズ画面 -->
+    <div id="quiz-screen" class="screen">
+      <div class="quiz-header">
+        <span id="quiz-progress">問題 1 / 10</span>
+        <div class="badge-container">
+          <span class="year-badge" id="year-badge" style="display: none;"></span>
+          <span class="era-badge" id="era-badge" style="display: none;"></span>
+        </div>
+      </div>
+      <div class="question-text" id="question-text"></div>
+
+      <button class="show-answer-btn" id="show-answer-btn" onclick="showAnswer()">答えを見る</button>
+
+      <div class="answer-container" id="answer-container">
+        <div class="answer-title">【正解】</div>
+        <div class="answer-text" id="answer-text"></div>
+        <div class="explanation-text" id="explanation-text"></div>
+        <div class="source-text" id="source-text"></div>
+      </div>
+
+      <div class="judge-btn-container" id="judge-btn-container">
+        <button class="judge-btn btn-not-yet" onclick="judgeResult(false)">✕ まだ</button>
+        <button class="judge-btn btn-remembered" onclick="judgeResult(true)">◯ 覚えた</button>
+      </div>
+    </div>
+
+    <!-- 3. 結果画面 -->
+    <div id="finish-screen" class="screen">
+      <h2>学習完了</h2>
+      <div class="score-box">
+        <div>覚えた問題数</div>
+        <div class="score-number" id="score-text">0 / 0 問</div>
+        <div>記憶定着率</div>
+        <div class="rate-number" id="rate-text">0%</div>
+      </div>
+      
+      <button class="weak-btn" id="retry-wrong-btn" onclick="retryCurrentWrongQuestions()" style="display: none; width: 100%; margin-bottom: 12px;">今回「まだ」だった問題だけ解き直す</button>
+      <button class="next-btn menu-btn" style="width:100%;" onclick="showStartScreen()">最初のメニューに戻る</button>
+    </div>
+
+    <!-- 4. 履歴画面 -->
+    <div id="history-screen" class="screen">
+      <h2>学習履歴</h2>
+      <ul class="history-list" id="history-list"></ul>
+      <button class="sub-btn" onclick="clearHistory()" style="width:100%; margin-bottom:12px; color:#c5221f;">履歴と記憶データを初期化</button>
+      <button class="menu-btn" style="width:100%;" onclick="showStartScreen()">メニューに戻る</button>
+    </div>
+  </div>
+
+  <script>
+    // ★ご自身の一問一答用CSV URLを設定してください★
+    const csvUrl = "YOUR_ICHIMON_ITTOU_CSV_URL_HERE";
+
+    let allQuizData = [];       
+    let currentQuizSet = [];     
+    let currentRoundWrongQuestions = []; 
+    let currentQuestionIndex = 0;
+    let rememberedCount = 0;
+    let currentCourseName = "";
+
+    function shuffleArray(array) {
+      const clone = [...array];
+      for (let i = clone.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [clone[i], clone[j]] = [clone[j], clone[i]];
+      }
+      return clone;
+    }
+
+    function parseCSVLine(line) {
+      const result = [];
+      let cur = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') {
+          inQuotes = !inQuotes;
+        } else if (c === ',' && !inQuotes) {
+          result.push(cur.trim().replace(/^"|"$/g, ''));
+          cur = '';
+        } else {
+          cur += c;
+        }
+      }
+      result.push(cur.trim().replace(/^"|"$/g, ''));
+      return result;
+    }
+
+    // 画像の7列構成 (era_code, era_name, year, question, answer, explanation, source) に対応
+    function parseCSV(text) {
+      const lines = text.trim().split(/\r?\n/);
+      const result = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i]) continue;
+        
+        const cols = parseCSVLine(lines[i]);
+        
+        if (cols.length >= 6) {
+          result.push({
+            id: `q_${i}`,                             // 行番号から一意のIDを生成
+            eraCode: parseInt(cols[0], 10) || 0,       // A列: era_code
+            eraName: cols[1] || "",                    // B列: era_name
+            year: cols[2] || "",                       // C列: year
+            question: cols[3] || "",                   // D列: question
+            answer: cols[4] || "",                     // E列: answer
+            explanation: cols[5] || "",                // F列: explanation
+            source: cols[6] || ""                      // G列: source
+          });
+        }
+      }
+      return result;
+    }
+
+    async function fetchQuizData() {
+      try {
+        const response = await fetch(csvUrl + "&t=" + new Date().getTime());
+        const csvText = await response.text();
+        allQuizData = parseCSV(csvText);
+
+        if (allQuizData.length > 0) {
+          document.getElementById("loading-status").style.display = "none";
+          document.getElementById("start-menu").style.display = "flex";
+          updateWeakCourseButton();
+        } else {
+          document.getElementById("loading-status").innerText = "問題データが見つかりませんでした。";
+        }
+      } catch (error) {
+        console.error("データ取得エラー:", error);
+        document.getElementById("loading-status").innerText = "データの読み込みに失敗しました。";
+      }
+    }
+
+    function showScreen(screenId) {
+      document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+      document.getElementById(screenId).classList.add("active");
+    }
+
+    function showStartScreen() {
+      updateWeakCourseButton();
+      showScreen("start-screen");
+    }
+
+    function startQuiz(count) {
+      const shuffledAll = shuffleArray(allQuizData);
+      let selected = [];
+
+      if (count === 'all' || count >= shuffledAll.length) {
+        selected = shuffledAll;
+        currentCourseName = "全問コース";
+      } else {
+        selected = shuffledAll.slice(0, count);
+        currentCourseName = `${count}問コース`;
+      }
+
+      currentQuizSet = selected.sort((a, b) => a.eraCode - b.eraCode);
+      currentQuestionIndex = 0;
+      rememberedCount = 0;
+      currentRoundWrongQuestions = [];
+
+      showScreen("quiz-screen");
+      loadQuestion();
+    }
+
+    function startWeakQuiz() {
+      const savedWeakIds = getStoredWeakIds();
+      const weakQuestions = allQuizData.filter(q => savedWeakIds.includes(q.id));
+
+      if (weakQuestions.length === 0) return;
+
+      currentCourseName = "未習得克服コース";
+      currentQuizSet = weakQuestions.sort((a, b) => a.eraCode - b.eraCode);
+      currentQuestionIndex = 0;
+      rememberedCount = 0;
+      currentRoundWrongQuestions = [];
+
+      showScreen("quiz-screen");
+      loadQuestion();
+    }
+
+    function retryCurrentWrongQuestions() {
+      currentCourseName = "解き直し";
+      currentQuizSet = currentRoundWrongQuestions.sort((a, b) => a.eraCode - b.eraCode);
+      currentQuestionIndex = 0;
+      rememberedCount = 0;
+      currentRoundWrongQuestions = [];
+
+      showScreen("quiz-screen");
+      loadQuestion();
+    }
+
+    function loadQuestion() {
+      const currentQuiz = currentQuizSet[currentQuestionIndex];
+
+      document.getElementById("quiz-progress").innerText = `問題 ${currentQuestionIndex + 1} / ${currentQuizSet.length}`;
+      
+      const eraBadge = document.getElementById("era-badge");
+      if (currentQuiz.eraName) {
+        eraBadge.innerText = currentQuiz.eraName;
+        eraBadge.style.display = "inline-block";
+      } else {
+        eraBadge.style.display = "none";
+      }
+
+      const yearBadge = document.getElementById("year-badge");
+      if (currentQuiz.year) {
+        yearBadge.innerText = currentQuiz.year;
+        yearBadge.style.display = "inline-block";
+      } else {
+        yearBadge.style.display = "none";
+      }
+
+      document.getElementById("question-text").innerText = currentQuiz.question;
+      document.getElementById("answer-text").innerText = currentQuiz.answer;
+      document.getElementById("explanation-text").innerText = currentQuiz.explanation || "解説なし";
+      
+      const sourceText = document.getElementById("source-text");
+      if (currentQuiz.source) {
+        sourceText.innerText = `出典: ${currentQuiz.source}`;
+        sourceText.style.display = "block";
+      } else {
+        sourceText.style.display = "none";
+      }
+
+      // UI表示のリセット
+      document.getElementById("show-answer-btn").style.display = "block";
+      document.getElementById("answer-container").style.display = "none";
+      document.getElementById("judge-btn-container").style.display = "none";
+    }
+
+    function showAnswer() {
+      document.getElementById("show-answer-btn").style.display = "none";
+      document.getElementById("answer-container").style.display = "block";
+      document.getElementById("judge-btn-container").style.display = "flex";
+    }
+
+    function judgeResult(isRemembered) {
+      const currentQuiz = currentQuizSet[currentQuestionIndex];
+
+      if (isRemembered) {
+        rememberedCount++;
+        removeWeakId(currentQuiz.id); // 覚えたらリストから削除
+      } else {
+        currentRoundWrongQuestions.push(currentQuiz);
+        addWeakId(currentQuiz.id); // 「まだ」の場合は弱点リストに追加
+      }
+
+      currentQuestionIndex++;
+
+      if (currentQuestionIndex < currentQuizSet.length) {
+        loadQuestion();
+      } else {
+        showFinishScreen();
+      }
+    }
+
+    function showFinishScreen() {
+      const total = currentQuizSet.length;
+      const rate = Math.round((rememberedCount / total) * 100);
+
+      document.getElementById("score-text").innerText = `${rememberedCount} / ${total} 問`;
+      document.getElementById("rate-text").innerText = `${rate}%`;
+
+      const retryBtn = document.getElementById("retry-wrong-btn");
+      if (currentRoundWrongQuestions.length > 0) {
+        retryBtn.innerText = `今回「まだ」だった ${currentRoundWrongQuestions.length} 問だけ解き直す`;
+        retryBtn.style.display = "block";
+      } else {
+        retryBtn.style.display = "none";
+      }
+
+      saveHistoryRecord(currentCourseName, rememberedCount, total, rate);
+      showScreen("finish-screen");
+    }
+
+    // --- ストレージ処理 ---
+
+    function getStoredWeakIds() {
+      const data = localStorage.getItem("ichimon_weak_ids");
+      return data ? JSON.parse(data) : [];
+    }
+
+    function addWeakId(id) {
+      let ids = getStoredWeakIds();
+      if (!ids.includes(id)) {
+        ids.push(id);
+        localStorage.setItem("ichimon_weak_ids", JSON.stringify(ids));
+      }
+    }
+
+    function removeWeakId(id) {
+      let ids = getStoredWeakIds();
+      if (ids.includes(id)) {
+        ids = ids.filter(item => item !== id);
+        localStorage.setItem("ichimon_weak_ids", JSON.stringify(ids));
+      }
+    }
+
+    function updateWeakCourseButton() {
+      const weakIds = getStoredWeakIds();
+      const weakBtn = document.getElementById("weak-course-btn");
+      if (weakIds.length > 0) {
+        weakBtn.innerText = `まだ覚えていない問題 (${weakIds.length}問)`;
+        weakBtn.style.display = "block";
+      } else {
+        weakBtn.style.display = "none";
+      }
+    }
+
+    function saveHistoryRecord(course, correct, total, rate) {
+      const now = new Date();
+      const dateStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      
+      const record = {
+        date: dateStr,
+        course: course,
+        score: `${correct}/${total}`,
+        rate: rate
+      };
+
+      let history = JSON.parse(localStorage.getItem("ichimon_history") || "[]");
+      history.unshift(record);
+      if (history.length > 20) history.pop();
+
+      localStorage.setItem("ichimon_history", JSON.stringify(history));
+    }
+
+    function showHistoryScreen() {
+      const history = JSON.parse(localStorage.getItem("ichimon_history") || "[]");
+      const historyList = document.getElementById("history-list");
+      historyList.innerHTML = "";
+
+      if (history.length === 0) {
+        historyList.innerHTML = '<li style="text-align:center; color:#666; padding:20px;">履歴データはありません</li>';
+      } else {
+        history.forEach(item => {
+          const li = document.createElement("li");
+          li.className = "history-item";
+          li.innerHTML = `
+            <div>
+              <span style="color:#666;">${item.date}</span>
+              <span style="margin-left:8px; font-weight:bold;">[${item.course}]</span>
+            </div>
+            <div style="font-weight:bold; color:#333;">${item.score}問 (${item.rate}%)</div>
+          `;
+          historyList.appendChild(li);
+        });
+      }
+
+      showScreen("history-screen");
+    }
+
+    function clearHistory() {
+      if (confirm("過去の履歴と記憶データをすべて初期化しますか？")) {
+        localStorage.removeItem("ichimon_history");
+        localStorage.removeItem("ichimon_weak_ids");
+        showHistoryScreen();
+      }
+    }
+
+    fetchQuizData();
+  </script>
+</body>
+</html>
