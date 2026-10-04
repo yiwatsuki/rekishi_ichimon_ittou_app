@@ -21,6 +21,7 @@
       padding: 24px;
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      position: relative;
     }
 
     .screen {
@@ -90,6 +91,60 @@
 
     .sub-btn:hover {
       background-color: #ced4da;
+    }
+
+    /* ポップアップ（モーダル）のスタイル */
+    .modal-overlay {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 12px;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      width: 80%;
+      max-width: 320px;
+      text-align: center;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    }
+
+    .modal-title {
+      font-weight: bold;
+      margin-bottom: 16px;
+      font-size: 1.05rem;
+      color: #333;
+    }
+
+    .modal-btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .modal-btn {
+      padding: 12px;
+      font-size: 1rem;
+      font-weight: bold;
+      background-color: #ff9500;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .modal-btn-cancel {
+      background-color: #8e8e93;
+      margin-top: 4px;
     }
 
     .quiz-header {
@@ -258,6 +313,16 @@
 <body>
 
   <div class="quiz-card">
+    <!-- ポップアップ（問題数選択モーダル） -->
+    <div id="weak-modal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-title">挑戦する問題数を選択</div>
+        <div class="modal-btn-group" id="modal-btn-group">
+          <!-- JSでボタンを動的生成 -->
+        </div>
+      </div>
+    </div>
+
     <!-- 1. スタート画面 -->
     <div id="start-screen" class="screen active">
       <h2>日本史 一問一答</h2>
@@ -267,7 +332,7 @@
         <button class="menu-btn" onclick="startQuiz(10)">10問挑戦コース</button>
         <button class="menu-btn" onclick="startQuiz(20)">20問挑戦コース</button>
         <button class="menu-btn" onclick="startQuiz('all')">全問挑戦コース</button>
-        <button class="weak-btn" id="weak-course-btn" onclick="startWeakQuiz()" style="display: none;">まだ覚えていない問題 (0問)</button>
+        <button class="weak-btn" id="weak-course-btn" onclick="openWeakModal()" style="display: none;">まだ覚えていない問題 (0問)</button>
         <button class="sub-btn" onclick="showHistoryScreen()">学習ログを見る</button>
       </div>
     </div>
@@ -411,10 +476,10 @@
 
     function showStartScreen() {
       updateWeakCourseButton();
+      closeWeakModal();
       showScreen("start-screen");
     }
 
-    // --- 出題回数管理用関数 ---
     function getStoredCounts() {
       const data = localStorage.getItem("ichimon_counts");
       return data ? JSON.parse(data) : {};
@@ -428,7 +493,6 @@
       localStorage.setItem("ichimon_counts", JSON.stringify(counts));
     }
 
-    // 出題選択ロジック（出題回数が少ない問題を優先的に抽出）
     function selectQuestionsLeastServed(dataArray, count) {
       if (count === 'all' || count >= dataArray.length) {
         return [...dataArray];
@@ -436,14 +500,12 @@
 
       const counts = getStoredCounts();
 
-      // 各問題に出題回数を紐付け
       const items = dataArray.map(item => ({
         data: item,
         count: counts[item.id] || 0,
-        rand: Math.random() // 同カウント時のランダムソート用
+        rand: Math.random()
       }));
 
-      // 出題回数昇順（少ない順） -> ランダム の優先順でソート
       items.sort((a, b) => {
         if (a.count !== b.count) {
           return a.count - b.count;
@@ -465,10 +527,8 @@
         currentCourseName = `${count}問コース`;
       }
 
-      // 出題決定した問題の出題回数をカウントアップ
       incrementQuestionCounts(selected);
 
-      // era_code 昇順（時代順）にソートしてセット
       currentQuizSet = selected.sort((a, b) => a.eraCode - b.eraCode);
       currentQuestionIndex = 0;
       rememberedCount = 0;
@@ -478,13 +538,74 @@
       loadQuestion();
     }
 
-    function startWeakQuiz() {
+    // --- 未習得問題のモーダルダイアログ制御 ---
+    function openWeakModal() {
       const savedWeakIds = getStoredWeakIds();
-      const weakQuestions = allQuizData.filter(q => savedWeakIds.includes(q.id));
+      const totalWeak = savedWeakIds.length;
+
+      // 10問以下の場合は直接全問でスタート
+      if (totalWeak <= 10) {
+        startWeakQuiz('all');
+        return;
+      }
+
+      const btnGroup = document.getElementById("modal-btn-group");
+      btnGroup.innerHTML = "";
+
+      // 10問ボタン
+      const btn10 = document.createElement("button");
+      btn10.className = "modal-btn";
+      btn10.innerText = "10問挑戦";
+      btn10.onclick = () => { closeWeakModal(); startWeakQuiz(10); };
+      btnGroup.appendChild(btn10);
+
+      // 20問ボタン（20問以上ある場合のみ表示）
+      if (totalWeak > 20) {
+        const btn20 = document.createElement("button");
+        btn20.className = "modal-btn";
+        btn20.innerText = "20問挑戦";
+        btn20.onclick = () => { closeWeakModal(); startWeakQuiz(20); };
+        btnGroup.appendChild(btn20);
+      }
+
+      // 全問ボタン
+      const btnAll = document.createElement("button");
+      btnAll.className = "modal-btn";
+      btnAll.innerText = `全問挑戦 (${totalWeak}問)`;
+      btnAll.onclick = () => { closeWeakModal(); startWeakQuiz('all'); };
+      btnGroup.appendChild(btnAll);
+
+      // キャンセルボタン
+      const btnCancel = document.createElement("button");
+      btnCancel.className = "modal-btn modal-btn-cancel";
+      btnCancel.innerText = "キャンセル";
+      btnCancel.onclick = closeWeakModal;
+      btnGroup.appendChild(btnCancel);
+
+      document.getElementById("weak-modal").style.display = "flex";
+    }
+
+    function closeWeakModal() {
+      document.getElementById("weak-modal").style.display = "none";
+    }
+
+    // 弱点コースの開始（問題数指定対応）
+    function startWeakQuiz(count) {
+      const savedWeakIds = getStoredWeakIds();
+      let weakQuestions = allQuizData.filter(q => savedWeakIds.includes(q.id));
 
       if (weakQuestions.length === 0) return;
 
-      currentCourseName = "未習得克服コース";
+      // 抽出指定がある場合（出題回数が少ない未克服問題から優先抽出）
+      if (count !== 'all' && count < weakQuestions.length) {
+        weakQuestions = selectQuestionsLeastServed(weakQuestions, count);
+        currentCourseName = `未習得 (${count}問)`;
+      } else {
+        currentCourseName = `未習得 (全${weakQuestions.length}問)`;
+      }
+
+      incrementQuestionCounts(weakQuestions);
+
       currentQuizSet = weakQuestions.sort((a, b) => a.eraCode - b.eraCode);
       currentQuestionIndex = 0;
       rememberedCount = 0;
