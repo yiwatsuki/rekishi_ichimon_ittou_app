@@ -40,6 +40,37 @@
       margin-bottom: 20px;
     }
 
+    /* ソース選択フィルターのスタイル */
+    .source-filter-box {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+
+    .source-filter-title {
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: #495057;
+      margin-bottom: 8px;
+    }
+
+    .source-checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .source-label {
+      font-size: 0.9rem;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+
     .menu-btn-container {
       display: flex;
       flex-direction: column;
@@ -159,6 +190,18 @@
     .badge-container {
       display: flex;
       gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    /* ソースバッジのスタイル */
+    .source-badge {
+      background-color: #e6f4ea;
+      color: #137333;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 0.85rem;
     }
 
     .era-badge {
@@ -328,6 +371,14 @@
       <h2>日本史 一問一答</h2>
       <p style="text-align: center; color: #666; margin-bottom: 24px;" id="loading-status">問題を読み込んでいます...</p>
       
+      <!-- 出題ソース選択フィルター -->
+      <div id="source-filter-box" class="source-filter-box" style="display: none;">
+        <div class="source-filter-title">出題ソースを選択：</div>
+        <div class="source-checkbox-group" id="source-checkbox-group">
+          <!-- JSでソースの選択肢を動的生成 -->
+        </div>
+      </div>
+
       <div id="start-menu" class="menu-btn-container" style="display: none;">
         <button class="menu-btn" onclick="startQuiz(10)">10問挑戦コース</button>
         <button class="menu-btn" onclick="startQuiz(20)">20問挑戦コース</button>
@@ -342,6 +393,8 @@
       <div class="quiz-header">
         <span id="quiz-progress">問題 1 / 10</span>
         <div class="badge-container">
+          <!-- 出展ソースバッジを追加 -->
+          <span class="source-badge" id="source-badge" style="display: none;"></span>
           <span class="year-badge" id="year-badge" style="display: none;"></span>
           <span class="era-badge" id="era-badge" style="display: none;"></span>
         </div>
@@ -397,15 +450,6 @@
     let rememberedCount = 0;
     let currentCourseName = "";
 
-    function shuffleArray(array) {
-      const clone = [...array];
-      for (let i = clone.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [clone[i], clone[j]] = [clone[j], clone[i]];
-      }
-      return clone;
-    }
-
     function parseCSVLine(line) {
       const result = [];
       let cur = '';
@@ -443,7 +487,7 @@
             question: cols[3] || "",
             answer: cols[4] || "",
             explanation: cols[5] || "",
-            source: cols[6] || ""
+            source: cols[6] || "未指定"
           });
         }
       }
@@ -458,6 +502,8 @@
 
         if (allQuizData.length > 0) {
           document.getElementById("loading-status").style.display = "none";
+          setupSourceFilters();
+          document.getElementById("source-filter-box").style.display = "block";
           document.getElementById("start-menu").style.display = "flex";
           updateWeakCourseButton();
         } else {
@@ -467,6 +513,44 @@
         console.error("データ取得エラー:", error);
         document.getElementById("loading-status").innerText = "データの読み込みに失敗しました。";
       }
+    }
+
+    // ソースフィルターのチェックボックス動的生成
+    function setupSourceFilters() {
+      const sources = [...new Set(allQuizData.map(q => q.source))].filter(Boolean);
+      const container = document.getElementById("source-checkbox-group");
+      container.innerHTML = "";
+
+      sources.forEach(src => {
+        const label = document.createElement("label");
+        label.className = "source-label";
+        
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = src;
+        checkbox.checked = true; // デフォルトで全選択
+        checkbox.onchange = updateWeakCourseButton;
+
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(` ${src}`));
+        container.appendChild(label);
+      });
+    }
+
+    // 選択されているソース一覧を取得
+    function getSelectedSources() {
+      const checkboxes = document.querySelectorAll("#source-checkbox-group input[type='checkbox']");
+      const selected = [];
+      checkboxes.forEach(cb => {
+        if (cb.checked) selected.push(cb.value);
+      });
+      return selected;
+    }
+
+    // ソースでフィルタリングした問題リストの取得
+    function getFilteredQuizData() {
+      const selectedSources = getSelectedSources();
+      return allQuizData.filter(q => selectedSources.includes(q.source));
     }
 
     function showScreen(screenId) {
@@ -517,13 +601,20 @@
     }
 
     function startQuiz(count) {
+      const filteredData = getFilteredQuizData();
+
+      if (filteredData.length === 0) {
+        alert("選択されたソースの問題がありません。ソースを1つ以上選択してください。");
+        return;
+      }
+
       let selected = [];
 
       if (count === 'all') {
-        selected = [...allQuizData];
+        selected = [...filteredData];
         currentCourseName = "全問コース";
       } else {
-        selected = selectQuestionsLeastServed(allQuizData, count);
+        selected = selectQuestionsLeastServed(filteredData, count);
         currentCourseName = `${count}問コース`;
       }
 
@@ -541,7 +632,13 @@
     // --- 未習得問題のモーダルダイアログ制御 ---
     function openWeakModal() {
       const savedWeakIds = getStoredWeakIds();
-      const totalWeak = savedWeakIds.length;
+      const filteredWeakQuestions = getFilteredQuizData().filter(q => savedWeakIds.includes(q.id));
+      const totalWeak = filteredWeakQuestions.length;
+
+      if (totalWeak === 0) {
+        alert("選択されたソースに未習得の問題はありません。");
+        return;
+      }
 
       // 10問以下の場合は直接全問でスタート
       if (totalWeak <= 10) {
@@ -589,14 +686,13 @@
       document.getElementById("weak-modal").style.display = "none";
     }
 
-    // 弱点コースの開始（問題数指定対応）
+    // 弱点コースの開始
     function startWeakQuiz(count) {
       const savedWeakIds = getStoredWeakIds();
-      let weakQuestions = allQuizData.filter(q => savedWeakIds.includes(q.id));
+      let weakQuestions = getFilteredQuizData().filter(q => savedWeakIds.includes(q.id));
 
       if (weakQuestions.length === 0) return;
 
-      // 抽出指定がある場合（出題回数が少ない未克服問題から優先抽出）
       if (count !== 'all' && count < weakQuestions.length) {
         weakQuestions = selectQuestionsLeastServed(weakQuestions, count);
         currentCourseName = `未習得 (${count}問)`;
@@ -631,6 +727,15 @@
 
       document.getElementById("quiz-progress").innerText = `問題 ${currentQuestionIndex + 1} / ${currentQuizSet.length}`;
       
+      // ソースバッジ表示設定（問題画面ヘッダー）
+      const sourceBadge = document.getElementById("source-badge");
+      if (currentQuiz.source) {
+        sourceBadge.innerText = currentQuiz.source;
+        sourceBadge.style.display = "inline-block";
+      } else {
+        sourceBadge.style.display = "none";
+      }
+
       const eraBadge = document.getElementById("era-badge");
       if (currentQuiz.eraName) {
         eraBadge.innerText = currentQuiz.eraName;
@@ -733,10 +838,12 @@
     }
 
     function updateWeakCourseButton() {
-      const weakIds = getStoredWeakIds();
+      const savedWeakIds = getStoredWeakIds();
+      const filteredWeak = getFilteredQuizData().filter(q => savedWeakIds.includes(q.id));
       const weakBtn = document.getElementById("weak-course-btn");
-      if (weakIds.length > 0) {
-        weakBtn.innerText = `まだ覚えていない問題 (${weakIds.length}問)`;
+
+      if (filteredWeak.length > 0) {
+        weakBtn.innerText = `まだ覚えていない問題 (${filteredWeak.length}問)`;
         weakBtn.style.display = "block";
       } else {
         weakBtn.style.display = "none";
