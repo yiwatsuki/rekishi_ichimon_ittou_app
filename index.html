@@ -40,30 +40,42 @@
       margin-bottom: 20px;
     }
 
-    /* ソース選択フィルターのスタイル */
-    .source-filter-box {
+    /* フィルターボックスのスタイル */
+    .filter-box {
       background: #f8f9fa;
       border: 1px solid #e9ecef;
       border-radius: 8px;
       padding: 12px 16px;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
     }
 
-    .source-filter-title {
+    .filter-title {
       font-size: 0.85rem;
       font-weight: bold;
       color: #495057;
       margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
-    .source-checkbox-group {
+    .filter-toggle-btn {
+      background: none;
+      border: none;
+      color: #0071e3;
+      font-size: 0.8rem;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .checkbox-group {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px 12px;
     }
 
-    .source-label {
-      font-size: 0.9rem;
+    .filter-label {
+      font-size: 0.85rem;
       color: #333;
       display: flex;
       align-items: center;
@@ -75,6 +87,7 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
+      margin-top: 16px;
     }
 
     .menu-btn {
@@ -194,7 +207,6 @@
       justify-content: flex-end;
     }
 
-    /* ソースバッジのスタイル */
     .source-badge {
       background-color: #e6f4ea;
       color: #137333;
@@ -284,38 +296,36 @@
       text-align: right;
     }
 
+    /* 4段階の判定ボタンコンテナ */
     .judge-btn-container {
       display: none;
-      gap: 12px;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
       margin-top: 20px;
     }
 
     .judge-btn {
-      flex: 1;
-      padding: 14px;
-      font-size: 1rem;
+      padding: 12px 8px;
+      font-size: 0.95rem;
       font-weight: bold;
       border: none;
       border-radius: 8px;
       cursor: pointer;
       color: white;
+      text-align: center;
     }
 
-    .btn-remembered {
-      background-color: #34a853;
-    }
+    .btn-lvl-0 { background-color: #ea4335; } /* まだ (赤) */
+    .btn-lvl-0:hover { background-color: #d33828; }
 
-    .btn-remembered:hover {
-      background-color: #2d9247;
-    }
+    .btn-lvl-1 { background-color: #ff9500; } /* あやしい (橙) */
+    .btn-lvl-1:hover { background-color: #e08300; }
 
-    .btn-not-yet {
-      background-color: #ea4335;
-    }
+    .btn-lvl-2 { background-color: #0071e3; } /* 覚えた (青) */
+    .btn-lvl-2:hover { background-color: #005bb5; }
 
-    .btn-not-yet:hover {
-      background-color: #d33828;
-    }
+    .btn-lvl-3 { background-color: #34a853; } /* 完璧 (緑) */
+    .btn-lvl-3:hover { background-color: #2d9247; }
 
     .score-box {
       text-align: center;
@@ -351,6 +361,13 @@
       justify-content: space-between;
       font-size: 0.9rem;
     }
+
+    .count-info {
+      font-size: 0.85rem;
+      color: #0071e3;
+      font-weight: bold;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -371,11 +388,41 @@
       <h2>日本史 一問一答</h2>
       <p style="text-align: center; color: #666; margin-bottom: 24px;" id="loading-status">問題を読み込んでいます...</p>
       
-      <!-- 出題ソース選択フィルター -->
-      <div id="source-filter-box" class="source-filter-box" style="display: none;">
-        <div class="source-filter-title">出題ソースを選択：</div>
-        <div class="source-checkbox-group" id="source-checkbox-group">
-          <!-- JSでソースの選択肢を動的生成 -->
+      <div id="filter-container" style="display: none;">
+        <!-- 出題ソース選択フィルター -->
+        <div class="filter-box">
+          <div class="filter-title">
+            <span>① 出題ソースを選択</span>
+            <button class="filter-toggle-btn" onclick="toggleAllCheckboxes('source-checkbox-group')">全選択/解除</button>
+          </div>
+          <div class="checkbox-group" id="source-checkbox-group"></div>
+        </div>
+
+        <!-- 時代選択フィルター（折りたたみ対応） -->
+        <div class="filter-box">
+          <div class="filter-title">
+            <span>② 時代を選択</span>
+            <button class="filter-toggle-btn" onclick="toggleAllCheckboxes('era-checkbox-group')">全選択/解除</button>
+          </div>
+          <div class="checkbox-group" id="era-checkbox-group"></div>
+        </div>
+
+        <!-- 定着度選択フィルター -->
+        <div class="filter-box">
+          <div class="filter-title">
+            <span>③ 定着度レベルを選択</span>
+            <button class="filter-toggle-btn" onclick="toggleAllCheckboxes('level-checkbox-group')">全選択/解除</button>
+          </div>
+          <div class="checkbox-group" id="level-checkbox-group">
+            <label class="filter-label"><input type="checkbox" value="0" checked onchange="onFilterChange()"> ✕ まだ</label>
+            <label class="filter-label"><input type="checkbox" value="1" onchange="onFilterChange()"> △ あやしい</label>
+            <label class="filter-label"><input type="checkbox" value="2" onchange="onFilterChange()"> ◯ 覚えた</label>
+            <label class="filter-label"><input type="checkbox" value="3" onchange="onFilterChange()"> ◎ 完璧</label>
+          </div>
+        </div>
+
+        <div style="text-align: center;">
+          <div class="count-info" id="target-count-info">対象問題数: 0問</div>
         </div>
       </div>
 
@@ -383,7 +430,6 @@
         <button class="menu-btn" onclick="startQuiz(10)">10問挑戦コース</button>
         <button class="menu-btn" onclick="startQuiz(20)">20問挑戦コース</button>
         <button class="menu-btn" onclick="startQuiz('all')">全問挑戦コース</button>
-        <button class="weak-btn" id="weak-course-btn" onclick="openWeakModal()" style="display: none;">まだ覚えていない問題 (0問)</button>
         <button class="sub-btn" onclick="showHistoryScreen()">学習ログを見る</button>
       </div>
     </div>
@@ -393,7 +439,6 @@
       <div class="quiz-header">
         <span id="quiz-progress">問題 1 / 10</span>
         <div class="badge-container">
-          <!-- 出展ソースバッジを追加 -->
           <span class="source-badge" id="source-badge" style="display: none;"></span>
           <span class="year-badge" id="year-badge" style="display: none;"></span>
           <span class="era-badge" id="era-badge" style="display: none;"></span>
@@ -410,9 +455,12 @@
         <div class="source-text" id="source-text"></div>
       </div>
 
+      <!-- 4段階の判定ボタン -->
       <div class="judge-btn-container" id="judge-btn-container">
-        <button class="judge-btn btn-not-yet" onclick="judgeResult(false)">✕ まだ</button>
-        <button class="judge-btn btn-remembered" onclick="judgeResult(true)">◯ 覚えた</button>
+        <button class="judge-btn btn-lvl-0" onclick="judgeResult(0)">✕ まだ</button>
+        <button class="judge-btn btn-lvl-1" onclick="judgeResult(1)">△ あやしい</button>
+        <button class="judge-btn btn-lvl-2" onclick="judgeResult(2)">◯ 覚えた</button>
+        <button class="judge-btn btn-lvl-3" onclick="judgeResult(3)">◎ 完璧</button>
       </div>
     </div>
 
@@ -420,13 +468,12 @@
     <div id="finish-screen" class="screen">
       <h2>学習完了</h2>
       <div class="score-box">
-        <div>覚えた問題数</div>
+        <div>今回「◯覚えた」または「◎完璧」になった割合</div>
         <div class="score-number" id="score-text">0 / 0 問</div>
-        <div>記憶定着率</div>
         <div class="rate-number" id="rate-text">0%</div>
       </div>
       
-      <button class="weak-btn" id="retry-wrong-btn" onclick="retryCurrentWrongQuestions()" style="display: none; width: 100%; margin-bottom: 12px;">今回「まだ」だった問題だけ解き直す</button>
+      <button class="weak-btn" id="retry-wrong-btn" onclick="retryCurrentWrongQuestions()" style="display: none; width: 100%; margin-bottom: 12px;">今回「まだ」「あやしい」だった問題だけ解き直す</button>
       <button class="next-btn menu-btn" style="width:100%;" onclick="showStartScreen()">最初のメニューに戻る</button>
     </div>
 
@@ -440,7 +487,6 @@
   </div>
 
   <script>
-    // ★ご自身の一問一答用CSV URLを設定してください★
     const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTcJvt2BQ7V06BO7y2mHJowT_-S6JkvAaxdPg7-nT-zZBACh1BchtFWyWCu3JwkcwhI1gtawEeeoRhy/pub?gid=1145026934&single=true&output=csv";
 
     let allQuizData = [];       
@@ -503,9 +549,10 @@
         if (allQuizData.length > 0) {
           document.getElementById("loading-status").style.display = "none";
           setupSourceFilters();
-          document.getElementById("source-filter-box").style.display = "block";
+          setupEraFilters();
+          document.getElementById("filter-container").style.display = "block";
           document.getElementById("start-menu").style.display = "flex";
-          updateWeakCourseButton();
+          onFilterChange();
         } else {
           document.getElementById("loading-status").innerText = "問題データが見つかりませんでした。";
         }
@@ -515,7 +562,6 @@
       }
     }
 
-    // ソースフィルターのチェックボックス動的生成
     function setupSourceFilters() {
       const sources = [...new Set(allQuizData.map(q => q.source))].filter(Boolean);
       const container = document.getElementById("source-checkbox-group");
@@ -523,34 +569,86 @@
 
       sources.forEach(src => {
         const label = document.createElement("label");
-        label.className = "source-label";
-        
+        label.className = "filter-label";
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.value = src;
-        checkbox.checked = true; // デフォルトで全選択
-        checkbox.onchange = updateWeakCourseButton;
-
+        checkbox.checked = true;
+        checkbox.onchange = onFilterChange;
         label.appendChild(checkbox);
         label.appendChild(document.createTextNode(` ${src}`));
         container.appendChild(label);
       });
     }
 
-    // 選択されているソース一覧を取得
-    function getSelectedSources() {
-      const checkboxes = document.querySelectorAll("#source-checkbox-group input[type='checkbox']");
-      const selected = [];
-      checkboxes.forEach(cb => {
-        if (cb.checked) selected.push(cb.value);
+    function setupEraFilters() {
+      // 時代コード順にソートしてユニークな時代名を取得
+      const eras = [...new Map(allQuizData.map(q => [q.eraName, q])).values()]
+        .sort((a, b) => a.eraCode - b.eraCode)
+        .map(q => q.eraName)
+        .filter(Boolean);
+
+      const container = document.getElementById("era-checkbox-group");
+      container.innerHTML = "";
+
+      eras.forEach(era => {
+        const label = document.createElement("label");
+        label.className = "filter-label";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = era;
+        checkbox.checked = true;
+        checkbox.onchange = onFilterChange;
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(` ${era}`));
+        container.appendChild(label);
       });
-      return selected;
     }
 
-    // ソースでフィルタリングした問題リストの取得
+    function toggleAllCheckboxes(groupId) {
+      const checkboxes = document.querySelectorAll(`#${groupId} input[type='checkbox']`);
+      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+      checkboxes.forEach(cb => cb.checked = !allChecked);
+      onFilterChange();
+    }
+
+    // 各定着度レベルを取得 (デフォルト: レベル0 = まだ)
+    function getStoredLevels() {
+      const data = localStorage.getItem("ichimon_levels");
+      return data ? JSON.parse(data) : {};
+    }
+
+    function setQuestionLevel(id, level) {
+      const levels = getStoredLevels();
+      levels[id] = level;
+      localStorage.setItem("ichimon_levels", JSON.stringify(levels));
+    }
+
+    function getSelectedValues(groupId) {
+      const checkboxes = document.querySelectorAll(`#${groupId} input[type='checkbox']`);
+      return Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
+    }
+
+    // 選択中のフィルター条件（ソース・時代・定着度）に合致する問題を取得
     function getFilteredQuizData() {
-      const selectedSources = getSelectedSources();
-      return allQuizData.filter(q => selectedSources.includes(q.source));
+      const selectedSources = getSelectedValues("source-checkbox-group");
+      const selectedEras = getSelectedValues("era-checkbox-group");
+      const selectedLevels = getSelectedValues("level-checkbox-group").map(v => parseInt(v, 10));
+      const levels = getStoredLevels();
+
+      return allQuizData.filter(q => {
+        const sourceMatch = selectedSources.includes(q.source);
+        const eraMatch = selectedEras.includes(q.eraName);
+        const currentLevel = levels[q.id] !== undefined ? levels[q.id] : 0; // デフォルトは0 (まだ)
+        const levelMatch = selectedLevels.includes(currentLevel);
+
+        return sourceMatch && eraMatch && levelMatch;
+      });
+    }
+
+    function onFilterChange() {
+      const filtered = getFilteredQuizData();
+      document.getElementById("target-count-info").innerText = `条件に合う出題対象: ${filtered.length}問`;
     }
 
     function showScreen(screenId) {
@@ -559,8 +657,7 @@
     }
 
     function showStartScreen() {
-      updateWeakCourseButton();
-      closeWeakModal();
+      onFilterChange();
       showScreen("start-screen");
     }
 
@@ -583,7 +680,6 @@
       }
 
       const counts = getStoredCounts();
-
       const items = dataArray.map(item => ({
         data: item,
         count: counts[item.id] || 0,
@@ -604,12 +700,11 @@
       const filteredData = getFilteredQuizData();
 
       if (filteredData.length === 0) {
-        alert("選択されたソースの問題がありません。ソースを1つ以上選択してください。");
+        alert("選択された条件に合致する問題がありません。フィルター条件を変更してください。");
         return;
       }
 
       let selected = [];
-
       if (count === 'all') {
         selected = [...filteredData];
         currentCourseName = "全問コース";
@@ -621,88 +716,6 @@
       incrementQuestionCounts(selected);
 
       currentQuizSet = selected.sort((a, b) => a.eraCode - b.eraCode);
-      currentQuestionIndex = 0;
-      rememberedCount = 0;
-      currentRoundWrongQuestions = [];
-
-      showScreen("quiz-screen");
-      loadQuestion();
-    }
-
-    // --- 未習得問題のモーダルダイアログ制御 ---
-    function openWeakModal() {
-      const savedWeakIds = getStoredWeakIds();
-      const filteredWeakQuestions = getFilteredQuizData().filter(q => savedWeakIds.includes(q.id));
-      const totalWeak = filteredWeakQuestions.length;
-
-      if (totalWeak === 0) {
-        alert("選択されたソースに未習得の問題はありません。");
-        return;
-      }
-
-      // 10問以下の場合は直接全問でスタート
-      if (totalWeak <= 10) {
-        startWeakQuiz('all');
-        return;
-      }
-
-      const btnGroup = document.getElementById("modal-btn-group");
-      btnGroup.innerHTML = "";
-
-      // 10問ボタン
-      const btn10 = document.createElement("button");
-      btn10.className = "modal-btn";
-      btn10.innerText = "10問挑戦";
-      btn10.onclick = () => { closeWeakModal(); startWeakQuiz(10); };
-      btnGroup.appendChild(btn10);
-
-      // 20問ボタン（20問以上ある場合のみ表示）
-      if (totalWeak > 20) {
-        const btn20 = document.createElement("button");
-        btn20.className = "modal-btn";
-        btn20.innerText = "20問挑戦";
-        btn20.onclick = () => { closeWeakModal(); startWeakQuiz(20); };
-        btnGroup.appendChild(btn20);
-      }
-
-      // 全問ボタン
-      const btnAll = document.createElement("button");
-      btnAll.className = "modal-btn";
-      btnAll.innerText = `全問挑戦 (${totalWeak}問)`;
-      btnAll.onclick = () => { closeWeakModal(); startWeakQuiz('all'); };
-      btnGroup.appendChild(btnAll);
-
-      // キャンセルボタン
-      const btnCancel = document.createElement("button");
-      btnCancel.className = "modal-btn modal-btn-cancel";
-      btnCancel.innerText = "キャンセル";
-      btnCancel.onclick = closeWeakModal;
-      btnGroup.appendChild(btnCancel);
-
-      document.getElementById("weak-modal").style.display = "flex";
-    }
-
-    function closeWeakModal() {
-      document.getElementById("weak-modal").style.display = "none";
-    }
-
-    // 弱点コースの開始
-    function startWeakQuiz(count) {
-      const savedWeakIds = getStoredWeakIds();
-      let weakQuestions = getFilteredQuizData().filter(q => savedWeakIds.includes(q.id));
-
-      if (weakQuestions.length === 0) return;
-
-      if (count !== 'all' && count < weakQuestions.length) {
-        weakQuestions = selectQuestionsLeastServed(weakQuestions, count);
-        currentCourseName = `未習得 (${count}問)`;
-      } else {
-        currentCourseName = `未習得 (全${weakQuestions.length}問)`;
-      }
-
-      incrementQuestionCounts(weakQuestions);
-
-      currentQuizSet = weakQuestions.sort((a, b) => a.eraCode - b.eraCode);
       currentQuestionIndex = 0;
       rememberedCount = 0;
       currentRoundWrongQuestions = [];
@@ -727,7 +740,6 @@
 
       document.getElementById("quiz-progress").innerText = `問題 ${currentQuestionIndex + 1} / ${currentQuizSet.length}`;
       
-      // ソースバッジ表示設定（問題画面ヘッダー）
       const sourceBadge = document.getElementById("source-badge");
       if (currentQuiz.source) {
         sourceBadge.innerText = currentQuiz.source;
@@ -772,18 +784,20 @@
     function showAnswer() {
       document.getElementById("show-answer-btn").style.display = "none";
       document.getElementById("answer-container").style.display = "block";
-      document.getElementById("judge-btn-container").style.display = "flex";
+      document.getElementById("judge-btn-container").style.display = "grid";
     }
 
-    function judgeResult(isRemembered) {
+    // 4段階の判定結果を保存・カウント
+    function judgeResult(level) {
       const currentQuiz = currentQuizSet[currentQuestionIndex];
 
-      if (isRemembered) {
-        rememberedCount++;
-        removeWeakId(currentQuiz.id);
+      // 定着レベルをローカルストレージに記憶
+      setQuestionLevel(currentQuiz.id, level);
+
+      if (level >= 2) {
+        rememberedCount++; // ◯覚えた、◎完璧 は正解としてカウント
       } else {
-        currentRoundWrongQuestions.push(currentQuiz);
-        addWeakId(currentQuiz.id);
+        currentRoundWrongQuestions.push(currentQuiz); // ✕まだ、△あやしい は解き直し対象へ
       }
 
       currentQuestionIndex++;
@@ -804,7 +818,7 @@
 
       const retryBtn = document.getElementById("retry-wrong-btn");
       if (currentRoundWrongQuestions.length > 0) {
-        retryBtn.innerText = `今回「まだ」だった ${currentRoundWrongQuestions.length} 問だけ解き直す`;
+        retryBtn.innerText = `今回「まだ」「あやしい」だった ${currentRoundWrongQuestions.length} 問だけ解き直す`;
         retryBtn.style.display = "block";
       } else {
         retryBtn.style.display = "none";
@@ -814,41 +828,7 @@
       showScreen("finish-screen");
     }
 
-    // --- ストレージ処理 ---
-
-    function getStoredWeakIds() {
-      const data = localStorage.getItem("ichimon_weak_ids");
-      return data ? JSON.parse(data) : [];
-    }
-
-    function addWeakId(id) {
-      let ids = getStoredWeakIds();
-      if (!ids.includes(id)) {
-        ids.push(id);
-        localStorage.setItem("ichimon_weak_ids", JSON.stringify(ids));
-      }
-    }
-
-    function removeWeakId(id) {
-      let ids = getStoredWeakIds();
-      if (ids.includes(id)) {
-        ids = ids.filter(item => item !== id);
-        localStorage.setItem("ichimon_weak_ids", JSON.stringify(ids));
-      }
-    }
-
-    function updateWeakCourseButton() {
-      const savedWeakIds = getStoredWeakIds();
-      const filteredWeak = getFilteredQuizData().filter(q => savedWeakIds.includes(q.id));
-      const weakBtn = document.getElementById("weak-course-btn");
-
-      if (filteredWeak.length > 0) {
-        weakBtn.innerText = `まだ覚えていない問題 (${filteredWeak.length}問)`;
-        weakBtn.style.display = "block";
-      } else {
-        weakBtn.style.display = "none";
-      }
-    }
+    // --- ストレージ・履歴処理 ---
 
     function saveHistoryRecord(course, correct, total, rate) {
       const now = new Date();
@@ -896,7 +876,7 @@
     function clearHistory() {
       if (confirm("過去の履歴・記憶状態・出題記録を初期化しますか？")) {
         localStorage.removeItem("ichimon_history");
-        localStorage.removeItem("ichimon_weak_ids");
+        localStorage.removeItem("ichimon_levels");
         localStorage.removeItem("ichimon_counts");
         showHistoryScreen();
       }
