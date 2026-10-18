@@ -513,10 +513,14 @@
         const cols = parseCSVLine(lines[i]);
         
         if (cols.length >= 6) {
+          // 数字以外の文字を除去して数値へ変換
+          const eraCodeRaw = cols[0] ? cols[0].replace(/[^0-9]/g, '') : "0";
+          const parsedEraCode = parseInt(eraCodeRaw, 10) || 0;
+
           result.push({
             id: `q_${i}`,
-            csvIndex: i, // CSV上の行番号を保持
-            eraCode: parseInt(cols[0], 10) || 0,
+            csvIndex: i, // CSV上の元の行番号を記憶
+            eraCode: parsedEraCode,
             eraName: cols[1] || "",
             year: cols[2] || "",
             question: cols[3] || "",
@@ -725,7 +729,7 @@
 
       incrementQuestionCounts(selected);
 
-      // 選出された問題を「時代コード -> CSV行番号」順（古い時代順）で確実にソート
+      // 選出された問題を時代昇順（古い時代順）で整列
       currentQuizSet = sortQuestionsChronologically(selected);
       currentQuestionIndex = 0;
       rememberedCount = 0;
