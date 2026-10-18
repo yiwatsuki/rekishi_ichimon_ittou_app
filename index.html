@@ -513,13 +513,12 @@
         const cols = parseCSVLine(lines[i]);
         
         if (cols.length >= 6) {
-          // 数字以外の文字を除去して数値へ変換
           const eraCodeRaw = cols[0] ? cols[0].replace(/[^0-9]/g, '') : "0";
           const parsedEraCode = parseInt(eraCodeRaw, 10) || 0;
 
           result.push({
             id: `q_${i}`,
-            csvIndex: i, // CSV上の元の行番号を記憶
+            csvIndex: i, // CSV上の元の行番号
             eraCode: parsedEraCode,
             eraName: cols[1] || "",
             year: cols[2] || "",
@@ -535,7 +534,7 @@
 
     // 時代コード (eraCode) -> 元データインデックス (csvIndex) の順で昇順ソートする共通関数
     function sortQuestionsChronologically(questions) {
-      return questions.sort((a, b) => {
+      return [...questions].sort((a, b) => {
         if (a.eraCode !== b.eraCode) {
           return a.eraCode - b.eraCode;
         }
@@ -565,7 +564,6 @@
       }
     }
 
-    // 折りたたみアコーディオン開閉制御
     function toggleAccordion(contentId, iconId) {
       const content = document.getElementById(contentId);
       const icon = document.getElementById(iconId);
@@ -625,275 +623,3 @@
       const checkboxes = document.querySelectorAll(`#${groupId} input[type='checkbox']`);
       const allChecked = Array.from(checkboxes).every(cb => cb.checked);
       checkboxes.forEach(cb => cb.checked = !allChecked);
-      onFilterChange();
-    }
-
-    function getStoredLevels() {
-      const data = localStorage.getItem("ichimon_levels");
-      return data ? JSON.parse(data) : {};
-    }
-
-    function setQuestionLevel(id, level) {
-      const levels = getStoredLevels();
-      levels[id] = level;
-      localStorage.setItem("ichimon_levels", JSON.stringify(levels));
-    }
-
-    function getSelectedValues(groupId) {
-      const checkboxes = document.querySelectorAll(`#${groupId} input[type='checkbox']`);
-      return Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
-    }
-
-    function getFilteredQuizData() {
-      const selectedSources = getSelectedValues("source-checkbox-group");
-      const selectedEras = getSelectedValues("era-checkbox-group");
-      const selectedLevels = getSelectedValues("level-checkbox-group").map(v => parseInt(v, 10));
-      const levels = getStoredLevels();
-
-      return allQuizData.filter(q => {
-        const sourceMatch = selectedSources.includes(q.source);
-        const eraMatch = selectedEras.includes(q.eraName);
-        const currentLevel = levels[q.id] !== undefined ? levels[q.id] : 0;
-        const levelMatch = selectedLevels.includes(currentLevel);
-
-        return sourceMatch && eraMatch && levelMatch;
-      });
-    }
-
-    function onFilterChange() {
-      const filtered = getFilteredQuizData();
-      document.getElementById("target-count-info").innerText = `条件に合う出題対象: ${filtered.length}問`;
-    }
-
-    function showScreen(screenId) {
-      document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-      document.getElementById(screenId).classList.add("active");
-    }
-
-    function showStartScreen() {
-      onFilterChange();
-      showScreen("start-screen");
-    }
-
-    function getStoredCounts() {
-      const data = localStorage.getItem("ichimon_counts");
-      return data ? JSON.parse(data) : {};
-    }
-
-    function incrementQuestionCounts(questions) {
-      const counts = getStoredCounts();
-      questions.forEach(q => {
-        counts[q.id] = (counts[q.id] || 0) + 1;
-      });
-      localStorage.setItem("ichimon_counts", JSON.stringify(counts));
-    }
-
-    function selectQuestionsLeastServed(dataArray, count) {
-      if (count === 'all' || count >= dataArray.length) {
-        return [...dataArray];
-      }
-
-      const counts = getStoredCounts();
-      const items = dataArray.map(item => ({
-        data: item,
-        count: counts[item.id] || 0,
-        rand: Math.random()
-      }));
-
-      items.sort((a, b) => {
-        if (a.count !== b.count) {
-          return a.count - b.count;
-        }
-        return a.rand - b.rand;
-      });
-
-      return items.slice(0, count).map(item => item.data);
-    }
-
-    function startQuiz(count) {
-      const filteredData = getFilteredQuizData();
-
-      if (filteredData.length === 0) {
-        alert("選択された条件に合致する問題がありません。フィルター条件を変更してください。");
-        return;
-      }
-
-      let selected = [];
-      if (count === 'all') {
-        selected = [...filteredData];
-        currentCourseName = "全問コース";
-      } else {
-        selected = selectQuestionsLeastServed(filteredData, count);
-        currentCourseName = `${count}問コース`;
-      }
-
-      incrementQuestionCounts(selected);
-
-      // 選出された問題を時代昇順（古い時代順）で整列
-      currentQuizSet = sortQuestionsChronologically(selected);
-      currentQuestionIndex = 0;
-      rememberedCount = 0;
-      currentRoundWrongQuestions = [];
-
-      showScreen("quiz-screen");
-      loadQuestion();
-    }
-
-    function retryCurrentWrongQuestions() {
-      currentCourseName = "解き直し";
-      currentQuizSet = sortQuestionsChronologically(currentRoundWrongQuestions);
-      currentQuestionIndex = 0;
-      rememberedCount = 0;
-      currentRoundWrongQuestions = [];
-
-      showScreen("quiz-screen");
-      loadQuestion();
-    }
-
-    function loadQuestion() {
-      const currentQuiz = currentQuizSet[currentQuestionIndex];
-
-      document.getElementById("quiz-progress").innerText = `問題 ${currentQuestionIndex + 1} / ${currentQuizSet.length}`;
-      
-      const sourceBadge = document.getElementById("source-badge");
-      if (currentQuiz.source) {
-        sourceBadge.innerText = currentQuiz.source;
-        sourceBadge.style.display = "inline-block";
-      } else {
-        sourceBadge.style.display = "none";
-      }
-
-      const eraBadge = document.getElementById("era-badge");
-      if (currentQuiz.eraName) {
-        eraBadge.innerText = currentQuiz.eraName;
-        eraBadge.style.display = "inline-block";
-      } else {
-        eraBadge.style.display = "none";
-      }
-
-      const yearBadge = document.getElementById("year-badge");
-      if (currentQuiz.year) {
-        yearBadge.innerText = currentQuiz.year;
-        yearBadge.style.display = "inline-block";
-      } else {
-        yearBadge.style.display = "none";
-      }
-
-      document.getElementById("question-text").innerText = currentQuiz.question;
-      document.getElementById("answer-text").innerText = currentQuiz.answer;
-      document.getElementById("explanation-text").innerText = currentQuiz.explanation || "解説なし";
-      
-      const sourceText = document.getElementById("source-text");
-      if (currentQuiz.source) {
-        sourceText.innerText = `出典: ${currentQuiz.source}`;
-        sourceText.style.display = "block";
-      } else {
-        sourceText.style.display = "none";
-      }
-
-      document.getElementById("show-answer-btn").style.display = "block";
-      document.getElementById("answer-container").style.display = "none";
-      document.getElementById("judge-btn-container").style.display = "none";
-    }
-
-    function showAnswer() {
-      document.getElementById("show-answer-btn").style.display = "none";
-      document.getElementById("answer-container").style.display = "block";
-      document.getElementById("judge-btn-container").style.display = "grid";
-    }
-
-    function judgeResult(level) {
-      const currentQuiz = currentQuizSet[currentQuestionIndex];
-
-      setQuestionLevel(currentQuiz.id, level);
-
-      if (level >= 2) {
-        rememberedCount++;
-      } else {
-        currentRoundWrongQuestions.push(currentQuiz);
-      }
-
-      currentQuestionIndex++;
-
-      if (currentQuestionIndex < currentQuizSet.length) {
-        loadQuestion();
-      } else {
-        showFinishScreen();
-      }
-    }
-
-    function showFinishScreen() {
-      const total = currentQuizSet.length;
-      const rate = Math.round((rememberedCount / total) * 100);
-
-      document.getElementById("score-text").innerText = `${rememberedCount} / ${total} 問`;
-      document.getElementById("rate-text").innerText = `${rate}%`;
-
-      const retryBtn = document.getElementById("retry-wrong-btn");
-      if (currentRoundWrongQuestions.length > 0) {
-        retryBtn.innerText = `今回「まだ」「あやしい」だった ${currentRoundWrongQuestions.length} 問だけ解き直す`;
-        retryBtn.style.display = "block";
-      } else {
-        retryBtn.style.display = "none";
-      }
-
-      saveHistoryRecord(currentCourseName, rememberedCount, total, rate);
-      showScreen("finish-screen");
-    }
-
-    function saveHistoryRecord(course, correct, total, rate) {
-      const now = new Date();
-      const dateStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      
-      const record = {
-        date: dateStr,
-        course: course,
-        score: `${correct}/${total}`,
-        rate: rate
-      };
-
-      let history = JSON.parse(localStorage.getItem("ichimon_history") || "[]");
-      history.unshift(record);
-      if (history.length > 20) history.pop();
-
-      localStorage.setItem("ichimon_history", JSON.stringify(history));
-    }
-
-    function showHistoryScreen() {
-      const history = JSON.parse(localStorage.getItem("ichimon_history") || "[]");
-      const historyList = document.getElementById("history-list");
-      historyList.innerHTML = "";
-
-      if (history.length === 0) {
-        historyList.innerHTML = '<li style="text-align:center; color:#666; padding:20px;">履歴データはありません</li>';
-      } else {
-        history.forEach(item => {
-          const li = document.createElement("li");
-          li.className = "history-item";
-          li.innerHTML = `
-            <div>
-              <span style="color:#666;">${item.date}</span>
-              <span style="margin-left:8px; font-weight:bold;">[${item.course}]</span>
-            </div>
-            <div style="font-weight:bold; color:#333;">${item.score}問 (${item.rate}%)</div>
-          `;
-          historyList.appendChild(li);
-        });
-      }
-
-      showScreen("history-screen");
-    }
-
-    function clearHistory() {
-      if (confirm("過去の履歴・記憶状態・出題記録を初期化しますか？")) {
-        localStorage.removeItem("ichimon_history");
-        localStorage.removeItem("ichimon_levels");
-        localStorage.removeItem("ichimon_counts");
-        showHistoryScreen();
-      }
-    }
-
-    fetchQuizData();
-  </script>
-</body>
-</html>
