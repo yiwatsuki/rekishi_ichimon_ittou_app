@@ -351,6 +351,13 @@
       font-weight: bold;
       margin-top: 8px;
     }
+
+    .sync-status {
+      font-size: 0.75rem;
+      color: #888;
+      text-align: center;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -411,6 +418,7 @@
 
         <div style="text-align: center;">
           <div class="count-info" id="target-count-info">対象問題数: 0問</div>
+          <div class="sync-status" id="sync-status"></div>
         </div>
       </div>
 
@@ -518,7 +526,7 @@
 
           result.push({
             id: `q_${i}`,
-            csvIndex: i, // CSV上の元の行番号
+            csvIndex: i,
             eraCode: parsedEraCode,
             eraName: cols[1] || "",
             year: cols[2] || "",
@@ -532,7 +540,6 @@
       return result;
     }
 
-    // 時代コード (eraCode) -> 元データインデックス (csvIndex) の順で昇順ソートする共通関数
     function sortQuestionsChronologically(questions) {
       return [...questions].sort((a, b) => {
         if (a.eraCode !== b.eraCode) {
@@ -542,84 +549,76 @@
       });
     }
 
-    async function fetchQuizData() {
-      try {
-        const response = await fetch(csvUrl + "&t=" + new Date().getTime());
-        const csvText = await response.text();
-        allQuizData = parseCSV(csvText);
+    // キャッシュ処理（ローカルストレージへの読み書き）
+    function getCachedQuizData() {
+      const cached = localStorage.getItem("ichimon_quiz_cache");
+      return cached ? JSON.parse(cached) : null;
+    }
 
-        if (allQuizData.length > 0) {
-          document.getElementById("loading-status").style.display = "none";
-          setupSourceFilters();
-          setupEraFilters();
-          document.getElementById("filter-container").style.display = "block";
-          document.getElementById("start-menu").style.display = "flex";
-          onFilterChange();
-        } else {
-          document.getElementById("loading-status").innerText = "問題データが見つかりませんでした。";
+    function setCachedQuizData(data) {
+      try {
+        localStorage.setItem("ichimon_quiz_cache", JSON.stringify(data));
+      } catch (e) {
+        console.warn("キャッシュの保存に失敗しました", e);
+      }
+    }
+
+    // アプリ起動時のデータ読み込みメイン処理（キャッシュ＋バックグラウンド非同期更新）
+    async function initQuizData() {
+      const cachedData = getCachedQuizData();
+
+      // ① キャッシュがある場合は即座に画面を表示（0.1秒起動）
+      if (cachedData && cachedData.length > 0) {
+        allQuizData = cachedData;
+        renderAppUI();
+        document.getElementById("sync-status").innerText = "データ同期中...";
+      }
+
+      // ② バックグラウンドで最新データを同期（5秒でタイムアウト設定）
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒タイムアウト
+
+        const response = await fetch(csvUrl + "&t=" + new Date().getTime(), { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        const csvText = await response.text();
+        const freshData = parseCSV(csvText);
+
+        if (freshData.length > 0) {
+          allQuizData = freshData;
+          setCachedQuizData(freshData); // 最新キャッシュを上書き保存
+
+          // まだキャッシュがなくて初回表示だった場合
+          if (!cachedData || cachedData.length === 0) {
+            renderAppUI();
+          } else {
+            // 背景で最新化された場合、画面のフィルター選択枠を更新
+            setupSourceFilters();
+            setupEraFilters();
+            onFilterChange();
+          }
+          document.getElementById("sync-status").innerText = "最新データ同期完了";
+          setTimeout(() => { document.getElementById("sync-status").innerText = ""; }, 3000);
         }
       } catch (error) {
-        console.error("データ取得エラー:", error);
-        document.getElementById("loading-status").innerText = "データの読み込みに失敗しました。";
+        console.warn("最新データの取得をスキップ（キャッシュを使用）:", error);
+        if (!cachedData || cachedData.length === 0) {
+          document.getElementById("loading-status").innerText = "データの読み込みに失敗しました。接続を確認してください。";
+        } else {
+          document.getElementById("sync-status").innerText = "";
+        }
       }
+    }
+
+    function renderAppUI() {
+      document.getElementById("loading-status").style.display = "none";
+      setupSourceFilters();
+      setupEraFilters();
+      document.getElementById("filter-container").style.display = "block";
+      document.getElementById("start-menu").style.display = "flex";
+      onFilterChange();
     }
 
     function toggleAccordion(contentId, iconId) {
-      const content = document.getElementById(contentId);
-      const icon = document.getElementById(iconId);
-
-      if (content.classList.contains("open")) {
-        content.classList.remove("open");
-        icon.innerText = "▼";
-      } else {
-        content.classList.add("open");
-        icon.innerText = "▲";
-      }
-    }
-
-    function setupSourceFilters() {
-      const sources = [...new Set(allQuizData.map(q => q.source))].filter(Boolean);
-      const container = document.getElementById("source-checkbox-group");
-      container.innerHTML = "";
-
-      sources.forEach(src => {
-        const label = document.createElement("label");
-        label.className = "filter-label";
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.value = src;
-        checkbox.checked = true;
-        checkbox.onchange = onFilterChange;
-        label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(` ${src}`));
-        container.appendChild(label);
-      });
-    }
-
-    function setupEraFilters() {
-      const eras = [...new Map(allQuizData.map(q => [q.eraName, q])).values()]
-        .sort((a, b) => a.eraCode - b.eraCode)
-        .map(q => q.eraName)
-        .filter(Boolean);
-
-      const container = document.getElementById("era-checkbox-group");
-      container.innerHTML = "";
-
-      eras.forEach(era => {
-        const label = document.createElement("label");
-        label.className = "filter-label";
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.value = era;
-        checkbox.checked = true;
-        checkbox.onchange = onFilterChange;
-        label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(` ${era}`));
-        container.appendChild(label);
-      });
-    }
-
-    function toggleAllCheckboxes(groupId) {
-      const checkboxes = document.querySelectorAll(`#${groupId} input[type='checkbox']`);
-      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-      checkboxes.forEach(cb => cb.checked = !allChecked);
+      const content = document.getElementById(
