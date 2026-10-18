@@ -515,6 +515,7 @@
         if (cols.length >= 6) {
           result.push({
             id: `q_${i}`,
+            csvIndex: i, // CSV上の行番号を保持
             eraCode: parseInt(cols[0], 10) || 0,
             eraName: cols[1] || "",
             year: cols[2] || "",
@@ -526,6 +527,16 @@
         }
       }
       return result;
+    }
+
+    // 時代コード (eraCode) -> 元データインデックス (csvIndex) の順で昇順ソートする共通関数
+    function sortQuestionsChronologically(questions) {
+      return questions.sort((a, b) => {
+        if (a.eraCode !== b.eraCode) {
+          return a.eraCode - b.eraCode;
+        }
+        return a.csvIndex - b.csvIndex;
+      });
     }
 
     async function fetchQuizData() {
@@ -714,7 +725,8 @@
 
       incrementQuestionCounts(selected);
 
-      currentQuizSet = selected.sort((a, b) => a.eraCode - b.eraCode);
+      // 選出された問題を「時代コード -> CSV行番号」順（古い時代順）で確実にソート
+      currentQuizSet = sortQuestionsChronologically(selected);
       currentQuestionIndex = 0;
       rememberedCount = 0;
       currentRoundWrongQuestions = [];
@@ -725,7 +737,7 @@
 
     function retryCurrentWrongQuestions() {
       currentCourseName = "解き直し";
-      currentQuizSet = currentRoundWrongQuestions.sort((a, b) => a.eraCode - b.eraCode);
+      currentQuizSet = sortQuestionsChronologically(currentRoundWrongQuestions);
       currentQuestionIndex = 0;
       rememberedCount = 0;
       currentRoundWrongQuestions = [];
